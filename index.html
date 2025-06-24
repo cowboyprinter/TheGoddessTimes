@@ -341,15 +341,45 @@
             color: var(--text-dark);
             font-family: 'Libre Baskerville', serif;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.05s ease;
             font-size: 1.1rem;
         }
-        
+
+        /* Add this new rule for the active state */
+        #ask-oracle:active {
+            background: var(--accent-gold);
+            /* Add a glow effect */
+            box-shadow: 0 0 15px 5px rgba(255, 255, 255, 0.7);
+            transform: scale(0.98); /* Optional: makes it feel like it's being pushed */
+        }
+
         #ask-oracle:hover {
             background: var(--accent-gold);
             color: var(--text-dark);
         }
-        
+        /* Add this anywhere in your <style> block */
+
+        /* This class will trigger the animation */
+        .thunder-flash {
+            animation: thunderbolt-animation 0.4s ease-out;
+        }
+
+        /* This defines the animation itself */
+        @keyframes thunderbolt-animation {
+            0% {
+                background: var(--paper-color);
+                box-shadow: none;
+            }
+            50% {
+                background: #ffffff; /* A bright white flash */
+                /* A sharp, bright gold glow */
+                box-shadow: 0 0 25px 10px var(--accent-gold), 0 0 10px 5px #fff inset;
+            }
+            100% {
+                background: var(--paper-color);
+                box-shadow: none;
+            }
+        }
         #oracle-response {
             font-size: 1.2rem;
             margin-top: 20px;
@@ -751,694 +781,300 @@
     </div>
     
     <script>
-        // ===== GAME STATE MANAGEMENT =====
-        class GameState {
-            constructor() {
-                this.stateKey = 'goddessTimesState';
-                this.initialize();
-            }
-            
-            initialize() {
-                this.state = {
-                    era: '30k',
-                    day: 0,
-                    past_events: ["a time of great stillness"],
-                    character_status: {},
-                    location_status: {"Cave of Origins": "sacred"},
-                    character_list: [],
-                    setting_list: [],
-                    event_list: []
-                };
-            }
-            
-            save() {
-                localStorage.setItem(this.stateKey, JSON.stringify(this.state));
-                console.log("[INFO] Game state saved to localStorage");
-            }
-            
-            load() {
-                const savedState = localStorage.getItem(this.stateKey);
-                if (savedState) {
-                    try {
-                        this.state = JSON.parse(savedState);
-                        console.log("[INFO] Game state loaded from localStorage");
-                    } catch (e) {
-                        console.log("[WARNING] Initializing fresh state");
-                        this.initialize();
-                    }
-                } else {
-                    console.log("[INFO] No saved state found, initializing fresh");
+    // ===== GAME STATE MANAGEMENT =====
+    class GameState {
+        constructor() {
+            this.stateKey = 'goddessTimesState';
+            this.initialize();
+        }
+        
+        initialize() {
+            this.state = {
+                era: '30k',
+                day: 0,
+                past_events: ["a time of great stillness"],
+                character_status: {},
+                location_status: {"Cave of Origins": "sacred"},
+                character_list: [],
+                setting_list: [],
+                event_list: []
+            };
+        }
+        
+        save() {
+            localStorage.setItem(this.stateKey, JSON.stringify(this.state));
+            console.log("[INFO] Game state saved to localStorage");
+        }
+        
+        load() {
+            const savedState = localStorage.getItem(this.stateKey);
+            if (savedState) {
+                try {
+                    this.state = JSON.parse(savedState);
+                    console.log("[INFO] Game state loaded from localStorage");
+                } catch (e) {
+                    console.log("[WARNING] Initializing fresh state");
                     this.initialize();
                 }
-            }
-            
-            add_event(event) {
-                if (this.state.past_events.length >= 3) {
-                    this.state.past_events.shift();
-                }
-                this.state.past_events.push(event.event_action_past || "Unknown Event");
-                this.save();
-            }
-            
-            reset() {
-                localStorage.removeItem(this.stateKey);
+            } else {
+                console.log("[INFO] No saved state found, initializing fresh");
                 this.initialize();
-                console.log("[INFO] Game state reset");
-            }
-            
-            setEra(era) {
-                this.state.era = era;
-                this.state.day = 0;
-                this.state.past_events = ["the beginning of a new era"];
-                this.save();
-                updateEraIndicator();
             }
         }
-
-        // ===== DATA SOURCES =====
-        const data = {
-            characters_30k: [
-                {
-                    "name": "Star-Mother Anya",
-                    "type": "Matriarch & Sky-Bride",
-                    "trait": "bearing the mark of the Sky-God",
-                    "goal": "guiding her lineage with celestial wisdom",
-                    "quote": "Our blood carries the light of the stars."
-                },
-                {
-                    "name": "Grey-Hair",
-                    "type": "Clan Midwife",
-                    "trait": "hands that have delivered countless children",
-                    "goal": "preserving the sacred knowledge of birth",
-                    "quote": "Each birth is a battle won for our people."
-                },
-                {
-                    "name": "Ochre-Hand",
-                    "type": "Cave Painter",
-                    "trait": "capturing the spirit world on stone",
-                    "goal": "recording our stories for generations to come",
-                    "quote": "The walls remember when memory fades."
-                },
-                {
-                    "name": "She-Who-Sings",
-                    "type": "Ritual Chantress",
-                    "trait": "voice that calls the spirits",
-                    "goal": "maintaining harmony between worlds",
-                    "quote": "The song is the bridge between earth and sky."
-                }
-            ],
-            
-            settings_30k: [
-                {
-                    "name": "Cave of Origins",
-                    "description": "the sacred birthplace of our people",
-                    "feature": "walls painted with the story of the Sky-God's descent",
-                    "atmosphere": "filled with the whispers of ancestors"
-                },
-                {
-                    "name": "Mammoth Bone Hearth",
-                    "description": "the central gathering place",
-                    "feature": "the eternal flame tended by Fire-Keeper",
-                    "atmosphere": "warm with stories and shared meals"
-                },
-                {
-                    "name": "Birthing Hut",
-                    "description": "the sacred space of creation",
-                    "feature": "woven screens depicting the Goddess",
-                    "atmosphere": "charged with the energy of life and struggle"
-                }
-            ],
-            
-            events_30k: [
-                {
-                    "event_type": "Sky-God's Descent",
-                    "event_action_past": "descended from the winter stars",
-                    "event_object_catalyst": "in a chariot of fire and light",
-                    "event_consequence": "with the First Matriarch now carrying star-blood",
-                    "weather": "the night of the falling stars"
-                },
-                {
-                    "event_type": "Sacred Birth",
-                    "event_action_past": "brought forth new life",
-                    "event_object_catalyst": "after three days of labor",
-                    "event_consequence": "with mother and child surviving against all odds",
-                    "weather": "the first spring thaw"
-                },
-                {
-                    "event_type": "Spirit Mask Creation",
-                    "event_action_past": "woven the sacred breath protector",
-                    "event_object_catalyst": "from marsh reeds and mammoth hair",
-                    "event_consequence": "with the Elder Mother protected from the choking winds",
-                    "weather": "great dust storms from the glacier"
-                },
-                {
-                    "event_type": "Ancestral Vision",
-                    "event_action_past": "received wisdom in dreamtime",
-                    "event_object_catalyst": "during the mushroom ceremony",
-                    "event_consequence": "with new hunting grounds revealed",
-                    "weather": "the night of the blue moon"
-                }
-            ],
-            
-            characters_60k: [
-                {
-                    "name": "Mountain-Mother",
-                    "type": "Clan Founder",
-                    "trait": "carrying the original star-blood",
-                    "goal": "leading her people through the ice",
-                    "quote": "We carry the fire of creation within us."
-                },
-                {
-                    "name": "Flint-Shaper",
-                    "type": "Tool Maker",
-                    "trait": "hands that speak with stone",
-                    "goal": "crafting tools for survival",
-                    "quote": "The stone remembers the hand that shapes it."
-                },
-                {
-                    "name": "Story-Weaver",
-                    "type": "Oral Historian",
-                    "trait": "memory spanning generations",
-                    "goal": "preserving the lineage of the Sky-Bride",
-                    "quote": "Our stories are the roots that anchor us."
-                },
-                {
-                    "name": "Root-Digger",
-                    "type": "Plant Knower",
-                    "trait": "understanding the green world",
-                    "goal": "finding medicine and nourishment",
-                    "quote": "Every plant holds a secret for those who listen."
-                }
-            ],
-            
-            settings_60k: [
-                {
-                    "name": "Glacial Passage",
-                    "description": "the treacherous path through ice mountains",
-                    "feature": "the sacred ice cave where the Sky-God first appeared",
-                    "atmosphere": "echoing with the voices of the ice spirits"
-                },
-                {
-                    "name": "Forest Sanctuary",
-                    "description": "the hidden grove of ancient trees",
-                    "feature": "the birthing stones where generations entered the world",
-                    "atmosphere": "filled with the scent of pine and safety"
-                },
-                {
-                    "name": "River of Tears",
-                    "description": "the life-giving water source",
-                    "feature": "the painted cliffs showing our history",
-                    "atmosphere": "flowing with memories of those who passed"
-                }
-            ],
-            
-            events_60k: [
-                {
-                    "event_type": "Great Migration",
-                    "event_action_past": "led the people south",
-                    "event_object_catalyst": "following the reindeer herds",
-                    "event_consequence": "with new lands found beyond the ice",
-                    "weather": "the great melting"
-                },
-                {
-                    "event_type": "Spirit Cave Discovery",
-                    "event_action_past": "found the whispering cave",
-                    "event_object_catalyst": "during the vision quest",
-                    "event_consequence": "with new connection to the ancestors",
-                    "weather": "the time of earth tremors"
-                },
-                {
-                    "event_type": "Birth of Twins",
-                    "event_action_past": "delivered two new lives",
-                    "event_object_catalyst": "with the midwife's ancient knowledge",
-                    "event_consequence": "with both mother and children surviving",
-                    "weather": "the night of the double moon"
-                },
-                {
-                    "event_type": "Star-Fire Ceremony",
-                    "event_action_past": "conducted the sky ritual",
-                    "event_object_catalyst": "at the sacred stone circle",
-                    "event_consequence": "with visions of the Sky-God's return",
-                    "weather": "the shower of falling stars"
-                }
-            ],
-            
-            characters_80k: [
-                {
-                    "name": "First Mother",
-                    "type": "Original Sky-Bride",
-                    "trait": "bearing the mark of the Sky-God",
-                    "goal": "establishing the matrilineal line",
-                    "quote": "Our children carry the future in their bones."
-                },
-                {
-                    "name": "Cave-Watcher",
-                    "type": "Boundary Keeper",
-                    "trait": "eyes that see in deepest dark",
-                    "goal": "protecting the clan from predators",
-                    "quote": "The night holds both danger and promise."
-                },
-                {
-                    "name": "Fire-Tender",
-                    "type": "Sacred Flame Guardian",
-                    "trait": "keeping the eternal fire alive",
-                    "goal": "maintaining the heart of the clan",
-                    "quote": "The flame connects us to the first spark."
-                },
-                {
-                    "name": "Skin-Stitcher",
-                    "type": "Cloth Maker",
-                    "trait": "hands that transform hide",
-                    "goal": "protecting the clan from the elements",
-                    "quote": "Each stitch is a prayer for warmth."
-                }
-            ],
-            
-            settings_80k: [
-                {
-                    "name": "Sky-God's Landing",
-                    "description": "the scorched valley of first contact",
-                    "feature": "the glass mountain formed by celestial fire",
-                    "atmosphere": "charged with otherworldly energy"
-                },
-                {
-                    "name": "Birthing Valley",
-                    "description": "the protected sanctuary",
-                    "feature": "the ancient midwife stone",
-                    "atmosphere": "filled with the cries of new life"
-                },
-                {
-                    "name": "Ancestor Mounds",
-                    "description": "the sacred burial grounds",
-                    "feature": "the standing stones that mark lineages",
-                    "atmosphere": "heavy with the presence of the departed"
-                }
-            ],
-            
-            events_80k: [
-                {
-                    "event_type": "First Contact",
-                    "event_action_past": "descended in light and thunder",
-                    "event_object_catalyst": "from the winter stars",
-                    "event_consequence": "with the First Mother chosen as Sky-Bride",
-                    "weather": "the night without darkness"
-                },
-                {
-                    "event_type": "Sacred Union",
-                    "event_action_past": "joined with the Sky-God",
-                    "event_object_catalyst": "on the glass mountain",
-                    "event_consequence": "with the star-blood now in human veins",
-                    "weather": "the time of celestial alignment"
-                },
-                {
-                    "event_type": "Great Survival",
-                    "event_action_past": "endured the trial of birth",
-                    "event_object_catalyst": "with the midwives' ancient knowledge",
-                    "event_consequence": "with the first star-child entering the world",
-                    "weather": "the great blizzard"
-                },
-                {
-                    "event_type": "Goddess Carving",
-                    "event_action_past": "shaped the first Venus",
-                    "event_object_catalyst": "from sacred mammoth ivory",
-                    "event_consequence": "with the divine feminine form honored",
-                    "weather": "the long night of creation"
-                }
-            ],
-            
-            templates_30k: [
-                "Amidst {setting_description} with its {setting_feature}, {character_name} the {character_type} witnessed the {event_type}. Known for {character_trait}, she understood this was a sign. '{character_quote}' she declared. The clan now sees {event_consequence}. This echoes the wisdom from {previous_event}.",
-                "At {setting_name}, where {setting_atmosphere} fills the air, {character_name} the {character_type} experienced the {event_type}. With her talent for {character_trait}, she interpreted the meaning. 'We must remember {event_object_catalyst},' she explained. Now {event_consequence}. The Elder Mothers recall {previous_event}.",
-                "During {weather} at {setting_name}, {character_name} the {character_type} guided the clan through the {event_type}. Renowned for {character_trait}, she knew {character_goal} was essential. '{character_quote}' she chanted. The result: {event_consequence}. This connects to the time when {previous_event}."
-            ],
-            
-            templates_60k: [
-                "In the time of {weather}, at {setting_name} where {setting_feature} stands, {character_name} the {character_type} led the {event_type}. Her {character_trait} proved vital. '{character_quote}' she reminded the people. This led to {event_consequence}. The story-weavers sing of {previous_event}.",
-                "While {event_action_past} at {setting_description}, {character_name} the {character_type} demonstrated her {character_trait}. '{character_quote}' she proclaimed. The outcome was {event_consequence}. This event recalls when {previous_event}, as told by the elders.",
-                "At {setting_name}, under {weather} skies, the {event_type} unfolded. {character_name} the {character_type}, known for {character_trait}, took action. '{character_quote}' she sang. Thus {event_consequence}. This resonates with the ancient tale of {previous_event}."
-            ],
-            
-            templates_80k: [
-                "In the dawn time, when {weather} covered the land, {character_name} the {character_type} experienced the {event_type}. Her {character_trait} allowed her to comprehend. '{character_quote}' she whispered. The consequence: {event_consequence}. This moment echoes the primordial {previous_event}.",
-                "At the sacred {setting_name}, during {weather}, the {event_type} occurred. {character_name} the {character_type}, blessed with {character_trait}, understood. '{character_quote}' she revealed. From this came {event_consequence}. The ancestors remember when {previous_event}.",
-                "When {event_action_past} at {setting_description}, {character_name} the {character_type} used her {character_trait} to guide us. '{character_quote}' she taught. This resulted in {event_consequence}. The lineage holders recall how {previous_event} shaped this moment."
-            ]
-        };
-
-        // ===== IMAGE RESOURCES =====
-        const headerThumbnails = [
-            "https://www.cowboyprinter.com/wp-content/uploads/2025/06/1XqfxO633IKgTUulAe96-3-rw0lv.jpg",
-            "https://www.cowboyprinter.com/wp-content/uploads/2025/06/1XqfxO633IKgTUulAe96-1-wzlzj.jpg",
-            "https://www.cowboyprinter.com/wp-content/uploads/2025/06/1XqfxO633IKgTUulAe96-2-fx8vz.jpg",
-            "https://www.cowboyprinter.com/wp-content/uploads/2025/06/1XqfxO633IKgTUulAe96-4-3ekpi.jpg",
-            "https://www.cowboyprinter.com/wp-content/uploads/2025/06/1XqfxO633IKgTUulAe96-5-0awfi.jpg",
-            "https://www.cowboyprinter.com/wp-content/uploads/2025/06/1XqfxO633IKgTUulAe96-6-9r5d5.jpg",
-            "https://www.cowboyprinter.com/wp-content/uploads/2025/06/1XqfxO633IKgTUulAe96-7-osbqj.jpg",
-            "https://www.cowboyprinter.com/wp-content/uploads/2025/06/1XqfxO633IKgTUulAe96-8-qnrck.jpg",
-            "https://www.cowboyprinter.com/wp-content/uploads/2025/06/SpUk3NLBREIk2Nc1nSez-0-m8h1x.jpg",
-            "https://www.cowboyprinter.com/wp-content/uploads/2025/06/SpUk3NLBREIk2Nc1nSez-1-m04cg.jpg",
-            "https://www.cowboyprinter.com/wp-content/uploads/2025/06/SpUk3NLBREIk2Nc1nSez-2-hi04e.jpg",
-            "https://www.cowboyprinter.com/wp-content/uploads/2025/06/SpUk3NLBREIk2Nc1nSez-4-o107x.jpg",
-            "https://www.cowboyprinter.com/wp-content/uploads/2025/06/SpUk3NLBREIk2Nc1nSez-6-5ympn.jpg"
-        ];
         
-        const storyBodyImages = {
-            "30k": [
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/LUm0CZx75s9FT8b3MKan-6-vo4y9.jpg",            
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/NAWUB8mkQrDmSBC9QwrC-0-23221.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/NAWUB8mkQrDmSBC9QwrC-1-j6dg5.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/NAWUB8mkQrDmSBC9QwrC-2-39dut.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/NAWUB8mkQrDmSBC9QwrC-3-pav59.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/NAWUB8mkQrDmSBC9QwrC-4-quayh.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/NAWUB8mkQrDmSBC9QwrC-5-r43h2.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/NAWUB8mkQrDmSBC9QwrC-6-81y5v.jpg",  
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/NAWUB8mkQrDmSBC9QwrC-7-qlfmd.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/NAWUB8mkQrDmSBC9QwrC-8-hbef1.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/BC61BLT83SD5YN2UYsWj-0-alr6y.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/BC61BLT83SD5YN2UYsWj-1-qnrxv.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/BC61BLT83SD5YN2UYsWj-2-nm5qd.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/BC61BLT83SD5YN2UYsWj-3-a4p2r.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/BC61BLT83SD5YN2UYsWj-4-8kt4k.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/BC61BLT83SD5YN2UYsWj-5-7gmhp.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/BC61BLT83SD5YN2UYsWj-6-ibvwv.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/BC61BLT83SD5YN2UYsWj-7-zqjv8.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/BC61BLT83SD5YN2UYsWj-8-rnntq.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/5yHPLfvHJXKOo7X7VdS6-0-cy6dr.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/5yHPLfvHJXKOo7X7VdS6-1-in5xq.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/5yHPLfvHJXKOo7X7VdS6-2-a9czm.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/5yHPLfvHJXKOo7X7VdS6-3-lhk70.jpg"
-            ],
-            "60k": [                       
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/5yHPLfvHJXKOo7X7VdS6-4-182gs.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/5yHPLfvHJXKOo7X7VdS6-5-eoyml.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/5yHPLfvHJXKOo7X7VdS6-6-5nonz.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/5yHPLfvHJXKOo7X7VdS6-7-7ll77.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/5yHPLfvHJXKOo7X7VdS6-8-6c2v8.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/IbeGkBnsfdr5UG90Qa5u-0-kztvz.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/IbeGkBnsfdr5UG90Qa5u-1-ztqub.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/IbeGkBnsfdr5UG90Qa5u-2-9yva7.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/IbeGkBnsfdr5UG90Qa5u-3-kcktg.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/IbeGkBnsfdr5UG90Qa5u-4-ryyxq.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/IbeGkBnsfdr5UG90Qa5u-5-z4c8g.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/IbeGkBnsfdr5UG90Qa5u-6-lggpv.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/IbeGkBnsfdr5UG90Qa5u-7-xphzi.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/IbeGkBnsfdr5UG90Qa5u-8-mt0au.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/TxG4gsu3qcKPwbuHprEA-0-5i032.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/TxG4gsu3qcKPwbuHprEA-1-ay216.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/TxG4gsu3qcKPwbuHprEA-2-srhix.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/TxG4gsu3qcKPwbuHprEA-3-st7vz.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/TxG4gsu3qcKPwbuHprEA-4-sr58v.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/TxG4gsu3qcKPwbuHprEA-5-pfepb.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/TxG4gsu3qcKPwbuHprEA-6-mzkuo.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/TxG4gsu3qcKPwbuHprEA-7-4hxf3.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/TxG4gsu3qcKPwbuHprEA-8-02908.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KyTg3slhTIwFc4q2WugB-8-pn1kz.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KyTg3slhTIwFc4q2WugB-7-47ytb.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KyTg3slhTIwFc4q2WugB-6-47kgk.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KyTg3slhTIwFc4q2WugB-5-ydsd4.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KyTg3slhTIwFc4q2WugB-4-xbmme.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KyTg3slhTIwFc4q2WugB-3-110ko.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KyTg3slhTIwFc4q2WugB-2-ivk1v.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KyTg3slhTIwFc4q2WugB-1-dze8m.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KyTg3slhTIwFc4q2WugB-0-5mhqj.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/1XqfxO633IKgTUulAe96-0-sp9o6.jpg"
-            ],
-            "80k": [
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/SpUk3NLBREIk2Nc1nSez-3-e3pn8.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/SpUk3NLBREIk2Nc1nSez-7-5hn4x.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/SpUk3NLBREIk2Nc1nSez-8-wkm7m.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KqH5OmsCHz4SoTycfIBq-8-4kea5.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KqH5OmsCHz4SoTycfIBq-7-8si5a.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KqH5OmsCHz4SoTycfIBq-6-bsk6b.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KqH5OmsCHz4SoTycfIBq-5-4m7oe.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/R5alktdkCGZkykBqBTKs-1-69h31.jpg",           
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KqH5OmsCHz4SoTycfIBq-4-weowa.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KqH5OmsCHz4SoTycfIBq-3-wrvzk.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KqH5OmsCHz4SoTycfIBq-2-m45mj.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KqH5OmsCHz4SoTycfIBq-1-1e4bc.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KqH5OmsCHz4SoTycfIBq-0-g043h.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/R5alktdkCGZkykBqBTKs-3-4d7z3.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/R5alktdkCGZkykBqBTKs-5-mkokl.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/LUm0CZx75s9FT8b3MKan-0-ybjms.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/LUm0CZx75s9FT8b3MKan-1-7ostq.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/LUm0CZx75s9FT8b3MKan-2-xgitb.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/LUm0CZx75s9FT8b3MKan-3-494l6.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/LUm0CZx75s9FT8b3MKan-5-tkkt0.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/LUm0CZx75s9FT8b3MKan-7-pmnm6.jpg",
-                "https://www.cowboyprinter.com/wp-content/uploads/2025/06/LUm0CZx75s9FT8b3MKan-8-6kxkt.jpg"
-            ]
-        };
-
-        const cartoonImages = [ 
-            "https://www.cowboyprinter.com/wp-content/uploads/2025/06/R5alktdkCGZkykBqBTKs-0-85ybz.jpg",
-            "https://www.cowboyprinter.com/wp-content/uploads/2025/06/R5alktdkCGZkykBqBTKs-2-bgfz4.jpg",
-            "https://www.cowboyprinter.com/wp-content/uploads/2025/06/R5alktdkCGZkykBqBTKs-4-u5lwl.jpg",
-            "https://www.cowboyprinter.com/wp-content/uploads/2025/06/R5alktdkCGZkykBqBTKs-6-qfa9a.jpg",
-            "https://www.cowboyprinter.com/wp-content/uploads/2025/06/R5alktdkCGZkykBqBTKs-7-kjupr.jpg",
-            "https://www.cowboyprinter.com/wp-content/uploads/2025/06/R5alktdkCGZkykBqBTKs-8-0vdd3.jpg",
-            "https://www.cowboyprinter.com/wp-content/uploads/2025/06/18tunsZmlrlSgrHx5Vzc-0-in4x6.jpg",
-            "https://www.cowboyprinter.com/wp-content/uploads/2025/06/XNQMM2yX8zIbPPlh7sGj-0-aon40.jpg" 
-        ];
+        add_event(event) {
+            if (this.state.past_events.length >= 3) {
+                this.state.past_events.shift();
+            }
+            this.state.past_events.push(event.event_action_past || "Unknown Event");
+            this.save();
+        }
         
-        const cartoonCaptions = [
-            "Cave men are so stupid, they don't have fire yet",
-            "When you realize your cave man's wallet is just a rock",
-            "What do you call a cave man without a goddess? Homeless.",
-            "Kids these days, they don't even know how to paint a cave",
-            "Just another day in paradise",
-            "When you realize you forgot to record your entire civilization",
-            "My oracle predicted this would happen",
-            "Why I always wear gheadgear to work",
-            "When kids have eaten but you're still hungry",
-            "How I explain alieans to my kids",
-            "Why I never trust a man in a cave",
-            "My reaction to the latest comet of doom",
-            "When the signs say it's the end and you're just getting started"
-        ];
-
-        // ===== STORY GENERATION FUNCTIONS =====
-        function getRandomElement(array) {
-            return array[Math.floor(Math.random() * array.length)];
+        reset() {
+            localStorage.removeItem(this.stateKey);
+            this.initialize();
+            console.log("[INFO] Game state reset");
         }
-
-        function shuffleArray(array) {
-            for (let i = array.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
-            }
-        }
-
-        function generateStorySnippet(gameState) {
-            const era = gameState.state.era;
-            const characters = data[`characters_${era}`] || [];
-            const settings = data[`settings_${era}`] || [];
-            const events = data[`events_${era}`] || [];
-            const templates = data[`templates_${era}`] || [];
-            
-            if (characters.length === 0 || settings.length === 0 || events.length === 0 || templates.length === 0) {
-                return {
-                    story: "No data available for this era.",
-                    event: null,
-                    setting: null,
-                    character: null
-                };
-            }
-
-            const character = getRandomElement(characters);
-            const setting = getRandomElement(settings);
-            const event = getRandomElement(events);
-            const template = getRandomElement(templates);
-
-            const previous_event = gameState.state.past_events.length > 0 ? 
-                gameState.state.past_events[gameState.state.past_events.length - 1] : 
-                "the time before memory";
-
-            const storyData = {
-                setting_name: setting.name || "Unknown",
-                setting_description: setting.description || "",
-                setting_feature: setting.feature || "",
-                setting_atmosphere: setting.atmosphere || "",
-                character_name: character.name || "Unknown",
-                character_type: character.type || "",
-                character_trait: character.trait || "",
-                character_goal: character.goal || "",
-                character_quote: character.quote || "",
-                event_type: event.event_type || "",
-                event_object_catalyst: event.event_object_catalyst || "",
-                event_consequence: event.event_consequence || "",
-                event_action_past: event.event_action_past || "",
-                weather: event.weather || "a time of balance",
-                previous_event: previous_event,
-                location_status: "sacred"
-            };
-
-            try {
-                return {
-                    story: template.replace(/\{(\w+)\}/g, (_, key) => storyData[key]),
-                    event: event,
-                    setting: setting,
-                    character: character
-                };
-            } catch (e) {
-                return {
-                    story: `[ERROR] Formatting error: ${e}`,
-                    event: null,
-                    setting: null,
-                    character: null
-                };
-            }
-        }
-
-        function updateOracle() {
-            const oracleImg = document.getElementById('oracle-img');
-            const caption = document.getElementById('oracle-caption');
-            
-            const randomIndex = Math.floor(Math.random() * cartoonImages.length);
-            oracleImg.src = cartoonImages[randomIndex];
-            oracleImg.alt = "Oracle of the Goddess";
-            caption.textContent = cartoonCaptions[randomIndex];
-        }
-
-        function generateStories() {
-            const container = document.getElementById('generated-stories');
-            container.innerHTML = '';
-            
-            gameState.state.day++;
-            const dayHeader = document.createElement('h3');
-            dayHeader.style.textAlign = 'center';
-            dayHeader.style.color = '#8b0000';
-            dayHeader.style.margin = '0 0 20px 0';
-            dayHeader.style.fontFamily = "'Playfair Display', serif";
-            dayHeader.style.fontSize = '1.6rem';
-            dayHeader.innerHTML = `<i class="fas fa-scroll"></i> ERA CHRONICLES ${gameState.state.day}`;
-            container.appendChild(dayHeader);
-
-            const storyGrid = document.createElement('div');
-            storyGrid.className = 'story-grid';
-            container.appendChild(storyGrid);
-            
-            // Shuffle header thumbnails for story images
-            const shuffledHeaderThumbs = [...headerThumbnails];
-            shuffleArray(shuffledHeaderThumbs);
-            
-            // Get era-specific body images
-            const eraImages = storyBodyImages[gameState.state.era] || [];
-            
-            for (let i = 0; i < 3; i++) {
-                const {story, event, setting, character} = generateStorySnippet(gameState);
-                
-                const storyElement = document.createElement('div');
-                storyElement.className = 'generated-story';
-
-                storyElement.innerHTML = `
-                    <div class="story-header">
-                        <div class="story-thumb">
-                            <img src="${shuffledHeaderThumbs[i % shuffledHeaderThumbs.length]}" alt="${character.name}">
-                        </div>
-                        <div>
-                            <h3 class="story-title">${event.event_type}</h3>
-                            <div class="story-meta">${setting.name} • ${event.weather}</div>
-                        </div>
-                    </div>
-                    <div class="story-body">
-                        <img src="${eraImages[i % eraImages.length]}" alt="A scene from the story" style="width:100%; margin-bottom:20px; border:1px solid #d4c9b5;">
-                        ${story}
-                    </div>
-                    <div class="story-quote">
-                        "${character.quote}"
-                    </div>
-                `;
-
-                storyGrid.appendChild(storyElement);
-                gameState.add_event(event);
-            }
-            
-            // Update oracle with new content
-            updateOracle();
-        }
-
-        function updateEraIndicator() {
-            const eraNames = {
-                '30k': '30,000 BCE',
-                '60k': '60,000 BCE',
-                '80k': '80,000 BCE'
-            };
-            document.getElementById('current-era').textContent = eraNames[gameState.state.era];
-        }
-
-        // ===== INITIALIZATION AND EVENT HANDLERS =====
-        const gameState = new GameState();
-        gameState.load();
-
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize oracle
-            updateOracle();
+        
+        setEra(era) {
+            this.state.era = era;
+            this.state.day = 0;
+            this.state.past_events = ["the beginning of a new era"];
+            this.save();
             updateEraIndicator();
-            
-            // Date and Time Update
-            const dateElement = document.getElementById('current-date');
-            const timeElement = document.getElementById('current-time');
-            const yearElement = document.getElementById('current-year');
+        }
+    }
 
-            function updateDateTime() {
-                const seasons = ['Deep Winter', 'Early Spring', 'Late Spring', 'Early Summer', 'High Summer', 'Late Summer', 'Early Autumn', 'Late Autumn', 'Early Winter'];
-                const moonPhases = ['New Moon', 'Waxing Crescent', 'First Quarter', 'Waxing Gibbous', 'Full Moon', 'Waning Gibbous', 'Last Quarter', 'Waning Crescent'];
-                
-                dateElement.textContent = `MOON CYCLE: ${getRandomElement(moonPhases)}`;
-                timeElement.textContent = `SEASON: ${getRandomElement(seasons)}`;
-                
-                if (yearElement) {
-                    yearElement.textContent = gameState.state.era === '30k' ? '30,000 BCE' : 
-                                            gameState.state.era === '60k' ? '60,000 BCE' : '80,000 BCE';
-                }
+    // ===== DATA SOURCES =====
+    const data = {
+        // ... your character, settings, and event data remains here ...
+        characters_30k: [ { "name": "Star-Mother Anya", "type": "Matriarch & Sky-Bride", "trait": "bearing the mark of the Sky-God", "goal": "guiding her lineage with celestial wisdom", "quote": "Our blood carries the light of the stars." }, { "name": "Grey-Hair", "type": "Clan Midwife", "trait": "hands that have delivered countless children", "goal": "preserving the sacred knowledge of birth", "quote": "Each birth is a battle won for our people." }, { "name": "Ochre-Hand", "type": "Cave Painter", "trait": "capturing the spirit world on stone", "goal": "recording our stories for generations to come", "quote": "The walls remember when memory fades." }, { "name": "She-Who-Sings", "type": "Ritual Chantress", "trait": "voice that calls the spirits", "goal": "maintaining harmony between worlds", "quote": "The song is the bridge between earth and sky." } ],
+        settings_30k: [ { "name": "Cave of Origins", "description": "the sacred birthplace of our people", "feature": "walls painted with the story of the Sky-God's descent", "atmosphere": "filled with the whispers of ancestors" }, { "name": "Mammoth Bone Hearth", "description": "the central gathering place", "feature": "the eternal flame tended by Fire-Keeper", "atmosphere": "warm with stories and shared meals" }, { "name": "Birthing Hut", "description": "the sacred space of creation", "feature": "woven screens depicting the Goddess", "atmosphere": "charged with the energy of life and struggle" } ],
+        events_30k: [ { "event_type": "Sky-God's Descent", "event_action_past": "descended from the winter stars", "event_object_catalyst": "in a chariot of fire and light", "event_consequence": "with the First Matriarch now carrying star-blood", "weather": "the night of the falling stars" }, { "event_type": "Sacred Birth", "event_action_past": "brought forth new life", "event_object_catalyst": "after three days of labor", "event_consequence": "with mother and child surviving against all odds", "weather": "the first spring thaw" }, { "event_type": "Spirit Mask Creation", "event_action_past": "woven the sacred breath protector", "event_object_catalyst": "from marsh reeds and mammoth hair", "event_consequence": "with the Elder Mother protected from the choking winds", "weather": "great dust storms from the glacier" }, { "event_type": "Ancestral Vision", "event_action_past": "received wisdom in dreamtime", "event_object_catalyst": "during the mushroom ceremony", "event_consequence": "with new hunting grounds revealed", "weather": "the night of the blue moon" } ],
+        templates_30k: [ "Amidst {setting_description} with its {setting_feature}, {character_name} the {character_type} witnessed the {event_type}. Known for {character_trait}, she understood this was a sign. '{character_quote}' she declared. The clan now sees {event_consequence}. This echoes the wisdom from {previous_event}.", "At {setting_name}, where {setting_atmosphere} fills the air, {character_name} the {character_type} experienced the {event_type}. With her talent for {character_trait}, she interpreted the meaning. 'We must remember {event_object_catalyst},' she explained. Now {event_consequence}. The Elder Mothers recall {previous_event}.", "During {weather} at {setting_name}, {character_name} the {character_type} guided the clan through the {event_type}. Renowned for {character_trait}, she knew {character_goal} was essential. '{character_quote}' she chanted. The result: {event_consequence}. This connects to the time when {previous_event}." ],
+        characters_60k: [ { "name": "Mountain-Mother", "type": "Clan Founder", "trait": "carrying the original star-blood", "goal": "leading her people through the ice", "quote": "We carry the fire of creation within us." }, { "name": "Flint-Shaper", "type": "Tool Maker", "trait": "hands that speak with stone", "goal": "crafting tools for survival", "quote": "The stone remembers the hand that shapes it." }, { "name": "Story-Weaver", "type": "Oral Historian", "trait": "memory spanning generations", "goal": "preserving the lineage of the Sky-Bride", "quote": "Our stories are the roots that anchor us." }, { "name": "Root-Digger", "type": "Plant Knower", "trait": "understanding the green world", "goal": "finding medicine and nourishment", "quote": "Every plant holds a secret for those who listen." } ],
+        settings_60k: [ { "name": "Glacial Passage", "description": "the treacherous path through ice mountains", "feature": "the sacred ice cave where the Sky-God first appeared", "atmosphere": "echoing with the voices of the ice spirits" }, { "name": "Forest Sanctuary", "description": "the hidden grove of ancient trees", "feature": "the birthing stones where generations entered the world", "atmosphere": "filled with the scent of pine and safety" }, { "name": "River of Tears", "description": "the life-giving water source", "feature": "the painted cliffs showing our history", "atmosphere": "flowing with memories of those who passed" } ],
+        events_60k: [ { "event_type": "Great Migration", "event_action_past": "led the people south", "event_object_catalyst": "following the reindeer herds", "event_consequence": "with new lands found beyond the ice", "weather": "the great melting" }, { "event_type": "Spirit Cave Discovery", "event_action_past": "found the whispering cave", "event_object_catalyst": "during the vision quest", "event_consequence": "with new connection to the ancestors", "weather": "the time of earth tremors" }, { "event_type": "Birth of Twins", "event_action_past": "delivered two new lives", "event_object_catalyst": "with the midwife's ancient knowledge", "event_consequence": "with both mother and children surviving", "weather": "the night of the double moon" }, { "event_type": "Star-Fire Ceremony", "event_action_past": "conducted the sky ritual", "event_object_catalyst": "at the sacred stone circle", "event_consequence": "with visions of the Sky-God's return", "weather": "the shower of falling stars" } ],
+        templates_60k: [ "In the time of {weather}, at {setting_name} where {setting_feature} stands, {character_name} the {character_type} led the {event_type}. Her {character_trait} proved vital. '{character_quote}' she reminded the people. This led to {event_consequence}. The story-weavers sing of {previous_event}.", "While {event_action_past} at {setting_description}, {character_name} the {character_type} demonstrated her {character_trait}. '{character_quote}' she proclaimed. The outcome was {event_consequence}. This event recalls when {previous_event}, as told by the elders.", "At {setting_name}, under {weather} skies, the {event_type} unfolded. {character_name} the {character_type}, known for {character_trait}, took action. '{character_quote}' she sang. Thus {event_consequence}. This resonates with the ancient tale of {previous_event}." ],
+        characters_80k: [ { "name": "First Mother", "type": "Original Sky-Bride", "trait": "bearing the mark of the Sky-God", "goal": "establishing the matrilineal line", "quote": "Our children carry the future in their bones." }, { "name": "Cave-Watcher", "type": "Boundary Keeper", "trait": "eyes that see in deepest dark", "goal": "protecting the clan from predators", "quote": "The night holds both danger and promise." }, { "name": "Fire-Tender", "type": "Sacred Flame Guardian", "trait": "keeping the eternal fire alive", "goal": "maintaining the heart of the clan", "quote": "The flame connects us to the first spark." }, { "name": "Skin-Stitcher", "type": "Cloth Maker", "trait": "hands that transform hide", "goal": "protecting the clan from the elements", "quote": "Each stitch is a prayer for warmth." } ],
+        settings_80k: [ { "name": "Sky-God's Landing", "description": "the scorched valley of first contact", "feature": "the glass mountain formed by celestial fire", "atmosphere": "charged with otherworldly energy" }, { "name": "Birthing Valley", "description": "the protected sanctuary", "feature": "the ancient midwife stone", "atmosphere": "filled with the cries of new life" }, { "name": "Ancestor Mounds", "description": "the sacred burial grounds", "feature": "the standing stones that mark lineages", "atmosphere": "heavy with the presence of the departed" } ],
+        events_80k: [ { "event_type": "First Contact", "event_action_past": "descended in light and thunder", "event_object_catalyst": "from the winter stars", "event_consequence": "with the First Mother chosen as Sky-Bride", "weather": "the night without darkness" }, { "event_type": "Sacred Union", "event_action_past": "joined with the Sky-God", "event_object_catalyst": "on the glass mountain", "event_consequence": "with the star-blood now in human veins", "weather": "the time of celestial alignment" }, { "event_type": "Great Survival", "event_action_past": "endured the trial of birth", "event_object_catalyst": "with the midwives' ancient knowledge", "event_consequence": "with the first star-child entering the world", "weather": "the great blizzard" }, { "event_type": "Goddess Carving", "event_action_past": "shaped the first Venus", "event_object_catalyst": "from sacred mammoth ivory", "event_consequence": "with the divine feminine form honored", "weather": "the long night of creation" } ],
+        templates_80k: [ "In the dawn time, when {weather} covered the land, {character_name} the {character_type} experienced the {event_type}. Her {character_trait} allowed her to comprehend. '{character_quote}' she whispered. The consequence: {event_consequence}. This moment echoes the primordial {previous_event}.", "At the sacred {setting_name}, during {weather}, the {event_type} occurred. {character_name} the {character_type}, blessed with {character_trait}, understood. '{character_quote}' she revealed. From this came {event_consequence}. The ancestors remember when {previous_event}.", "When {event_action_past} at {setting_description}, {character_name} the {character_type} used her {character_trait} to guide us. '{character_quote}' she taught. This resulted in {event_consequence}. The lineage holders recall how {previous_event} shaped this moment." ]
+    };
+
+    // ===== IMAGE RESOURCES =====
+    const headerThumbnails = [ "https://www.cowboyprinter.com/wp-content/uploads/2025/06/1XqfxO633IKgTUulAe96-3-rw0lv.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/1XqfxO633IKgTUulAe96-1-wzlzj.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/1XqfxO633IKgTUulAe96-2-fx8vz.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/1XqfxO633IKgTUulAe96-4-3ekpi.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/1XqfxO633IKgTUulAe96-5-0awfi.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/1XqfxO633IKgTUulAe96-6-9r5d5.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/1XqfxO633IKgTUulAe96-7-osbqj.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/1XqfxO633IKgTUulAe96-8-qnrck.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/SpUk3NLBREIk2Nc1nSez-0-m8h1x.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/SpUk3NLBREIk2Nc1nSez-1-m04cg.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/SpUk3NLBREIk2Nc1nSez-2-hi04e.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/SpUk3NLBREIk2Nc1nSez-4-o107x.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/SpUk3NLBREIk2Nc1nSez-6-5ympn.jpg" ];
+    const storyBodyImages = { "30k": [ "https://www.cowboyprinter.com/wp-content/uploads/2025/06/LUm0CZx75s9FT8b3MKan-6-vo4y9.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/NAWUB8mkQrDmSBC9QwrC-0-23221.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/NAWUB8mkQrDmSBC9QwrC-1-j6dg5.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/NAWUB8mkQrDmSBC9QwrC-2-39dut.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/NAWUB8mkQrDmSBC9QwrC-3-pav59.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/NAWUB8mkQrDmSBC9QwrC-4-quayh.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/NAWUB8mkQrDmSBC9QwrC-5-r43h2.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/NAWUB8mkQrDmSBC9QwrC-6-81y5v.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/NAWUB8mkQrDmSBC9QwrC-7-qlfmd.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/NAWUB8mkQrDmSBC9QwrC-8-hbef1.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/BC61BLT83SD5YN2UYsWj-0-alr6y.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/BC61BLT83SD5YN2UYsWj-1-qnrxv.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/BC61BLT83SD5YN2UYsWj-2-nm5qd.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/BC61BLT83SD5YN2UYsWj-3-a4p2r.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/BC61BLT83SD5YN2UYsWj-4-8kt4k.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/BC61BLT83SD5YN2UYsWj-5-7gmhp.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/BC61BLT83SD5YN2UYsWj-6-ibvwv.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/BC61BLT83SD5YN2UYsWj-7-zqjv8.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/BC61BLT83SD5YN2UYsWj-8-rnntq.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/5yHPLfvHJXKOo7X7VdS6-0-cy6dr.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/5yHPLfvHJXKOo7X7VdS6-1-in5xq.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/5yHPLfvHJXKOo7X7VdS6-2-a9czm.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/5yHPLfvHJXKOo7X7VdS6-3-lhk70.jpg" ], "60k": [ "https://www.cowboyprinter.com/wp-content/uploads/2025/06/5yHPLfvHJXKOo7X7VdS6-4-182gs.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/5yHPLfvHJXKOo7X7VdS6-5-eoyml.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/5yHPLfvHJXKOo7X7VdS6-6-5nonz.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/5yHPLfvHJXKOo7X7VdS6-7-7ll77.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/5yHPLfvHJXKOo7X7VdS6-8-6c2v8.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/IbeGkBnsfdr5UG90Qa5u-0-kztvz.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/IbeGkBnsfdr5UG90Qa5u-1-ztqub.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/IbeGkBnsfdr5UG90Qa5u-2-9yva7.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/IbeGkBnsfdr5UG90Qa5u-3-kcktg.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/IbeGkBnsfdr5UG90Qa5u-4-ryyxq.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/IbeGkBnsfdr5UG90Qa5u-5-z4c8g.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/IbeGkBnsfdr5UG90Qa5u-6-lggpv.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/IbeGkBnsfdr5UG90Qa5u-7-xphzi.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/IbeGkBnsfdr5UG90Qa5u-8-mt0au.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/TxG4gsu3qcKPwbuHprEA-0-5i032.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/TxG4gsu3qcKPwbuHprEA-1-ay216.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/TxG4gsu3qcKPwbuHprEA-2-srhix.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/TxG4gsu3qcKPwbuHprEA-3-st7vz.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/TxG4gsu3qcKPwbuHprEA-4-sr58v.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/TxG4gsu3qcKPwbuHprEA-5-pfepb.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/TxG4gsu3qcKPwbuHprEA-6-mzkuo.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/TxG4gsu3qcKPwbuHprEA-7-4hxf3.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/TxG4gsu3qcKPwbuHprEA-8-02908.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KyTg3slhTIwFc4q2WugB-8-pn1kz.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KyTg3slhTIwFc4q2WugB-7-47ytb.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KyTg3slhTIwFc4q2WugB-6-47kgk.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KyTg3slhTIwFc4q2WugB-5-ydsd4.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KyTg3slhTIwFc4q2WugB-4-xbmme.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KyTg3slhTIwFc4q2WugB-3-110ko.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KyTg3slhTIwFc4q2WugB-2-ivk1v.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KyTg3slhTIwFc4q2WugB-1-dze8m.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KyTg3slhTIwFc4q2WugB-0-5mhqj.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/1XqfxO633IKgTUulAe96-0-sp9o6.jpg" ], "80k": [ "https://www.cowboyprinter.com/wp-content/uploads/2025/06/SpUk3NLBREIk2Nc1nSez-3-e3pn8.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/SpUk3NLBREIk2Nc1nSez-7-5hn4x.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/SpUk3NLBREIk2Nc1nSez-8-wkm7m.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KqH5OmsCHz4SoTycfIBq-8-4kea5.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KqH5OmsCHz4SoTycfIBq-7-8si5a.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KqH5OmsCHz4SoTycfIBq-6-bsk6b.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KqH5OmsCHz4SoTycfIBq-5-4m7oe.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/R5alktdkCGZkykBqBTKs-1-69h31.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KqH5OmsCHz4SoTycfIBq-4-weowa.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KqH5OmsCHz4SoTycfIBq-3-wrvzk.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KqH5OmsCHz4SoTycfIBq-2-m45mj.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KqH5OmsCHz4SoTycfIBq-1-1e4bc.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/KqH5OmsCHz4SoTycfIBq-0-g043h.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/R5alktdkCGZkykBqBTKs-3-4d7z3.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/R5alktdkCGZkykBqBTKs-5-mkokl.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/LUm0CZx75s9FT8b3MKan-0-ybjms.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/LUm0CZx75s9FT8b3MKan-1-7ostq.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/LUm0CZx75s9FT8b3MKan-2-xgitb.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/LUm0CZx75s9FT8b3MKan-3-494l6.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/LUm0CZx75s9FT8b3MKan-5-tkkt0.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/LUm0CZx75s9FT8b3MKan-7-pmnm6.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/LUm0CZx75s9FT8b3MKan-8-6kxkt.jpg" ] };
+    const cartoonImages = [ "https://www.cowboyprinter.com/wp-content/uploads/2025/06/R5alktdkCGZkykBqBTKs-0-85ybz.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/R5alktdkCGZkykBqBTKs-2-bgfz4.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/R5alktdkCGZkykBqBTKs-4-u5lwl.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/R5alktdkCGZkykBqBTKs-6-qfa9a.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/R5alktdkCGZkykBqBTKs-7-kjupr.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/R5alktdkCGZkykBqBTKs-8-0vdd3.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/18tunsZmlrlSgrHx5Vzc-0-in4x6.jpg", "https://www.cowboyprinter.com/wp-content/uploads/2025/06/XNQMM2yX8zIbPPlh7sGj-0-aon40.jpg" ];
+    const cartoonCaptions = [ "Cave men are so stupid, they don't have fire yet", "When you realize your cave man's wallet is just a rock", "What do you call a cave man without a goddess? Homeless.", "Kids these days, they don't even know how to paint a cave", "Just another day in paradise", "When you realize you forgot to record your entire civilization", "My oracle predicted this would happen", "Why I always wear gheadgear to work", "When kids have eaten but you're still hungry", "How I explain alieans to my kids", "Why I never trust a man in a cave", "My reaction to the latest comet of doom", "When the signs say it's the end and you're just getting started" ];
+
+    // ===== STORY GENERATION FUNCTIONS =====
+    function getRandomElement(array) {
+        return array[Math.floor(Math.random() * array.length)];
+    }
+
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+    }
+
+    function generateStorySnippet(gameState) {
+        const era = gameState.state.era;
+        const characters = data[`characters_${era}`] || [];
+        const settings = data[`settings_${era}`] || [];
+        const events = data[`events_${era}`] || [];
+        const templates = data[`templates_${era}`] || [];
+        
+        if (characters.length === 0 || settings.length === 0 || events.length === 0 || templates.length === 0) {
+            return {
+                story: "No data available for this era.", event: null, setting: null, character: null
+            };
+        }
+
+        const character = getRandomElement(characters);
+        const setting = getRandomElement(settings);
+        const event = getRandomElement(events);
+        const template = getRandomElement(templates);
+
+        const previous_event = gameState.state.past_events.length > 0 ? 
+            gameState.state.past_events[gameState.state.past_events.length - 1] : 
+            "the time before memory";
+
+        const storyData = {
+            setting_name: setting.name || "Unknown", setting_description: setting.description || "", setting_feature: setting.feature || "", setting_atmosphere: setting.atmosphere || "",
+            character_name: character.name || "Unknown", character_type: character.type || "", character_trait: character.trait || "", character_goal: character.goal || "", character_quote: character.quote || "",
+            event_type: event.event_type || "", event_object_catalyst: event.event_object_catalyst || "", event_consequence: event.event_consequence || "", event_action_past: event.event_action_past || "",
+            weather: event.weather || "a time of balance", previous_event: previous_event, location_status: "sacred"
+        };
+
+        try {
+            return {
+                story: template.replace(/\{(\w+)\}/g, (_, key) => storyData[key]),
+                event: event, setting: setting, character: character
+            };
+        } catch (e) {
+            return { story: `[ERROR] Formatting error: ${e}`, event: null, setting: null, character: null };
+        }
+    }
+
+    function updateOracle() {
+        const oracleImg = document.getElementById('oracle-img');
+        const caption = document.getElementById('oracle-caption');
+        
+        const randomIndex = Math.floor(Math.random() * cartoonImages.length);
+        oracleImg.src = cartoonImages[randomIndex];
+        oracleImg.alt = "Oracle of the Goddess";
+        caption.textContent = cartoonCaptions[randomIndex];
+    }
+
+    function generateStories() {
+        const container = document.getElementById('generated-stories');
+        container.innerHTML = '';
+        
+        gameState.state.day++;
+        const dayHeader = document.createElement('h3');
+        dayHeader.style.textAlign = 'center';
+        dayHeader.style.color = '#8b0000';
+        dayHeader.style.margin = '0 0 20px 0';
+        dayHeader.style.fontFamily = "'Playfair Display', serif";
+        dayHeader.style.fontSize = '1.6rem';
+        dayHeader.innerHTML = `<i class="fas fa-scroll"></i> ERA CHRONICLES ${gameState.state.day}`;
+        container.appendChild(dayHeader);
+
+        const storyGrid = document.createElement('div');
+        storyGrid.className = 'story-grid';
+        container.appendChild(storyGrid);
+        
+        const shuffledHeaderThumbs = [...headerThumbnails];
+        shuffleArray(shuffledHeaderThumbs);
+        
+        const eraImages = storyBodyImages[gameState.state.era] || [];
+        
+        for (let i = 0; i < 3; i++) {
+            const {story, event, setting, character} = generateStorySnippet(gameState);
+            
+            const storyElement = document.createElement('div');
+            storyElement.className = 'generated-story';
+
+            storyElement.innerHTML = `
+                <div class="story-header">
+                    <div class="story-thumb">
+                        <img src="${shuffledHeaderThumbs[i % shuffledHeaderThumbs.length]}" alt="${character.name}">
+                    </div>
+                    <div>
+                        <h3 class="story-title">${event.event_type}</h3>
+                        <div class="story-meta">${setting.name} • ${event.weather}</div>
+                    </div>
+                </div>
+                <div class="story-body">
+                    <img src="${eraImages[i % eraImages.length]}" alt="A scene from the story" style="width:100%; margin-bottom:20px; border:1px solid #d4c9b5;">
+                    ${story}
+                </div>
+                <div class="story-quote">
+                    "${character.quote}"
+                </div>
+            `;
+
+            storyGrid.appendChild(storyElement);
+            gameState.add_event(event);
+        }
+        
+        updateOracle();
+    }
+
+    function updateEraIndicator() {
+        const eraNames = {
+            '30k': '30,000 BCE', '60k': '60,000 BCE', '80k': '80,000 BCE'
+        };
+        document.getElementById('current-era').textContent = eraNames[gameState.state.era];
+    }
+
+    // ===== SCRIPT INITIALIZATION =====
+    const gameState = new GameState();
+    gameState.load();
+
+    // ===== ALL EVENT HANDLERS GO INSIDE THIS SINGLE DOMCONTENTLOADED BLOCK =====
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // --- Get references to all interactive elements ---
+        const generateBtn = document.getElementById('generateBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const dateElement = document.getElementById('current-date');
+        const timeElement = document.getElementById('current-time');
+        const yearElement = document.getElementById('current-year');
+        const oracleButton = document.getElementById('ask-oracle');
+        const oracleResponse = document.getElementById('oracle-response');
+        const thunderSound = document.getElementById('thunder-sound');
+
+        // --- Define data arrays needed for events ---
+        const oracleResponses = [
+            "The Goddess smiles upon your path", "Seek wisdom in the cave of your ancestors",
+            "The stars foretell a time of abundance", "Trust in the lineage of the mothers",
+            "A new life will bring great joy", "The birthing stones hold your answer",
+            "Remember the strength of the First Mother", "Your path is lit by the moon's glow",
+            "The spirits of the earth guide you", "The sacred mushroom will reveal truth"
+        ];
+
+        // --- Initial page setup function ---
+        function updateDateTime() {
+            const seasons = ['Deep Winter', 'Early Spring', 'Late Spring', 'Early Summer', 'High Summer', 'Late Summer', 'Early Autumn', 'Late Autumn', 'Early Winter'];
+            const moonPhases = ['New Moon', 'Waxing Crescent', 'First Quarter', 'Waxing Gibbous', 'Full Moon', 'Waning Gibbous', 'Last Quarter', 'Waning Crescent'];
+            
+            dateElement.textContent = `MOON CYCLE: ${getRandomElement(moonPhases)}`;
+            timeElement.textContent = `SEASON: ${getRandomElement(seasons)}`;
+            
+            if (yearElement) {
+                yearElement.textContent = gameState.state.era === '30k' ? '30,000 BCE' : 
+                                      gameState.state.era === '60k' ? '60,000 BCE' : '80,000 BCE';
             }
-            updateDateTime();
-            
-            // Story Generation Controls 
-            document.getElementById('generateBtn').addEventListener('click', generateStories);
-            document.getElementById('resetBtn').addEventListener('click', () => {
-                gameState.reset();
-                document.getElementById('generated-stories').innerHTML = 
-                    '<div class="story-grid"><div class="generated-story"><div class="story-body"><p>Select an era and generate stories to begin chronicling our ancestors\' journey.</p></div></div></div>';
-                updateEraIndicator();
-            });
+        }
+        
+        // --- Run initial setup functions ---
+        updateOracle();
+        updateEraIndicator();
+        updateDateTime();
 
-            // Era selection
-            document.querySelectorAll('.era-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    document.querySelectorAll('.era-btn').forEach(b => b.classList.remove('active'));
-                    this.classList.add('active');
-                    gameState.setEra(this.dataset.era);
-                    updateDateTime();
-                });
-            });
-            
-            // Oracle
-            const oracleResponses = [
-                "The Goddess smiles upon your path",
-                "Seek wisdom in the cave of your ancestors",
-                "The stars foretell a time of abundance",
-                "Trust in the lineage of the mothers",
-                "A new life will bring great joy",
-                "The birthing stones hold your answer",
-                "Remember the strength of the First Mother",
-                "Your path is lit by the moon's glow",
-                "The spirits of the earth guide you",
-                "The sacred mushroom will reveal truth"
-            ];
-            
-            document.getElementById('ask-oracle').addEventListener('click', function() {
-                const responseElement = document.getElementById('oracle-response');
-                responseElement.textContent = getRandomElement(oracleResponses);
-                
-                // Animate the response
-                responseElement.style.opacity = 0;
-                setTimeout(() => {
-                    responseElement.style.transition = 'opacity 1s';
-                    responseElement.style.opacity = 1;
-                }, 10);
+        // --- Attach Event Listeners ---
+        
+        generateBtn.addEventListener('click', generateStories);
+
+        resetBtn.addEventListener('click', () => {
+            gameState.reset();
+            document.getElementById('generated-stories').innerHTML =
+                '<div class="story-grid"><div class="generated-story"><div class="story-body"><p>Select an era and generate stories to begin chronicling our ancestors\' journey.</p></div></div></div>';
+            updateEraIndicator();
+        });
+
+        document.querySelectorAll('.era-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.era-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                gameState.setEra(this.dataset.era);
+                updateDateTime();
             });
         });
-    </script>
+
+        oracleButton.addEventListener('click', function() {
+            if (thunderSound) {
+                thunderSound.currentTime = 0;
+                thunderSound.play();
+            }
+            this.classList.add('thunder-flash');
+            setTimeout(() => { this.classList.remove('thunder-flash'); }, 400);
+
+            oracleResponse.textContent = getRandomElement(oracleResponses);
+            oracleResponse.style.opacity = 0;
+            setTimeout(() => {
+                oracleResponse.style.transition = 'opacity 1s';
+                oracleResponse.style.opacity = 1;
+            }, 10);
+        });
+    });
+</script>
+
+<audio id="thunder-sound" src="https://www.cowboyprinter.com/wp-content/uploads/2025/06/oracle_thunder.mp3" preload="auto"></audio>
+
 </body>
 </html>
