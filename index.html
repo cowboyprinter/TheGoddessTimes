@@ -33,7 +33,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 20px;
+           
             overflow-x: hidden;
         }
         
@@ -583,6 +583,37 @@
             .date-time-section {
                 font-size: 0.9rem;
             }
+        /* ADD THIS RULE */
+            .times-paper {
+                padding: 15px; /* Reduces the padding on very small screens */
+            }
+
+            .content-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .generated-story {
+                padding: 15px;
+            }
+
+            .story-header {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .story-thumb {
+                margin-bottom: 15px;
+            }
+
+            .story-title {
+                font-size: 1.5rem;
+            }
+
+            .story-meta {
+                font-size: 0.8rem;
+            }
+
         }
         
         /* ===== PRINT-FRIENDLY STYLES ===== */
